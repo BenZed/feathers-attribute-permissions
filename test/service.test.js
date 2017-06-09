@@ -4,8 +4,9 @@ import hooks from 'feathers-hooks'
 import memory from 'feathers-memory'
 import clear from 'cli-clear'
 
-import Permissions from '../src'
 /* global describe it */
+
+import Permissions from '../src'
 
 /******************************************************************************/
 // Fake User Hooks
@@ -47,22 +48,41 @@ const app = feathers()
 const users = app.service('users')
 const articles = app.service('articles')
 
+const articlePermissions = new Permissions({
+  view: 'articles',
+  edit: 'articles',
+  create: 'articles',
+  remove: 'articles-admin'
+
+})
+
 /******************************************************************************/
 // Test
 /******************************************************************************/
 
-describe('Configuration', () => {
+describe('Permissions object', () => {
 
-  it('doesn\'t kill babies', async () => {
+  it('takes a definition and an options object', async () => {
 
     const user = await users.create({ name: 'Ben' })
 
-    articles.before({ all: simulateAuth(user.id) })
+    await users.patch(user.id, { permissions: {
+      'articles': true,
+      'articles-admin': false
+    }})
 
-    const deadBabies = Math.round(Math.random() * 3)
+    articles.before({ all: [simulateAuth(user.id), articlePermissions.check] })
+    articles.after({ all: articlePermissions.filter })
 
-    if (deadBabies > 0)
-      throw new Error(`${deadBabies} babies killed.`)
+    await articles.create({ name: 'test', body: 'ooooo check it out!'})
+    await articles.create({ name: 'test1', body: 'I am a banana'})
+    await articles.create({ name: 'test2', body: 'Im a goat'})
+    await articles.create({ name: 'test3', body: 'Im a jerry'})
+    await articles.create({ name: 'test4', body: 'This is quite amazing'})
+
+    console.log(await articles.find({}))
+
+    // await articles.remove(4)
 
   })
 
