@@ -26,7 +26,6 @@
   },
   "homepage": "https://github.com/BenZed/feathers-attribute-permissions#readme",
   "devDependencies": {
-    "babel": "^6.23.0",
     "babel-cli": "^6.24.1",
     "babel-eslint": "^7.2.3",
     "babel-plugin-transform-runtime": "^6.23.0",

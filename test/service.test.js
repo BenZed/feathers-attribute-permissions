@@ -51,8 +51,11 @@ const articles = app.service('articles')
 const articlePermissions = new Permissions({
   view: 'articles',
   edit: 'articles',
-  create: 'articles',
-  remove: 'articles-admin'
+  remove: 'articles-admin',
+
+  data: {
+    body: 'articles-body'
+  }
 
 })
 
@@ -66,10 +69,7 @@ describe('Permissions object', () => {
 
     const user = await users.create({ name: 'Ben' })
 
-    await users.patch(user.id, { permissions: {
-      'articles': true,
-      'articles-admin': false
-    }})
+    await users.patch(user.id, { permissions: { articles: true, 'articles-view': true, 'articles-body': true } } )
 
     articles.before({ all: [simulateAuth(user.id), articlePermissions.check] })
     articles.after({ all: articlePermissions.filter })
@@ -80,9 +80,13 @@ describe('Permissions object', () => {
     await articles.create({ name: 'test3', body: 'Im a jerry'})
     await articles.create({ name: 'test4', body: 'This is quite amazing'})
 
+    await users.patch(user.id, { permissions: { articles: true, 'articles-view': true, 'articles-body': false } } )
+
     console.log(await articles.find({}))
 
-    // await articles.remove(4)
+    await articles.patch(4, { body: 'cheese' })
+
+    await articles.remove(4)
 
   })
 

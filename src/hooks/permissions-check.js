@@ -1,5 +1,38 @@
 import { checkContext } from 'feathers-hooks-common/lib/services'
 import { Forbidden } from 'feathers-errors'
+import is from 'is-explicit'
+
+/******************************************************************************/
+// Helper
+/******************************************************************************/
+
+function getNameOfService(service, app) {
+
+  for (const name in app.services) {
+    const other = app.services[name]
+    if (other === service)
+      return name
+  }
+
+  return null
+}
+
+function describeError(error, method, name, msg = `You cannot ${method} ${name}.`) {
+
+  if (!is(error, Object))
+    return msg
+
+  const descriptions = {}
+
+  for (const key in error)
+    descriptions[key] = describeError(error[key], method, name, `You cannot edit field '${key}'.`)
+
+  return descriptions
+}
+
+/******************************************************************************/
+// Export
+/******************************************************************************/
 
 export default function(permissions) {
 
@@ -23,8 +56,12 @@ export default function(permissions) {
       throw new Error('User not resolved, permissions could not be determined.')
 
     const error = await permissions.test(user, method, data)
-    if (error)
-      throw new Forbidden(error)
+    if (error) {
+      const serviceName = getNameOfService(this, hook.app)
+      const errors = describeError(error, method, serviceName)
+
+      throw new Forbidden(is(errors, String) ? errors : { errors: errors })
+    }
   }
 
 }

@@ -1,5 +1,6 @@
 import { permissionsCheck, permissionsFilter } from './hooks'
-import { parseConfig, testDataFlags, METHOD_FLAGS, DATA_FLAGS } from './util'
+import { parseConfig, testDataFlags, testMethodFlags, determineAttributes,
+ DATA_FLAGS } from './util'
 
 import is from 'is-explicit'
 import define from 'define-utility'
@@ -11,13 +12,8 @@ import define from 'define-utility'
 const DEFAULT_OPTIONS = {
   userEntityField: 'user',
   userIdField: '_id',
-  userPermissionsField: 'permissions',
-  documentPerssionsField: 'permissions'
+  permissionsField: 'permissions',
 }
-
-const DATA_METHODS = [ 'patch', 'update', 'create' ]
-
-// const VIEW_METHODS = [ 'find', 'get' ]
 
 /******************************************************************************/
 // Main
@@ -40,34 +36,28 @@ export default class Permissions {
 
   async test(user, method, data) {
 
-    const flag = this[METHOD_FLAGS][method]
+    const attributes = this::determineAttributes(user, method, data)
 
-    let result = false
+    let errors = await this::testMethodFlags(user, attributes, method, data)
 
-    if (is(flag, String) && !this.userHasFlag(user, flag))
-      result = true
+    if (!errors && data && this[DATA_FLAGS])
+      errors = await this::testDataFlags(this[DATA_FLAGS], user, attributes, method, data)
 
-    else if (is(flag, Function))
-      result = await flag(user, method, data)
-
-    if (!result && DATA_METHODS.includes(method) && data && this[DATA_FLAGS])
-      result = await this::testDataFlags(user, method, data)
-
-    return result ? is(result, String) ? result : `Cannot ${method} this service.` : false
+    return errors
 
   }
 
   async pass(user, method, data) {
 
-    return ! await this.test(user, method, data)
+    return await ! this.test(user, method, data)
 
   }
 
-  userHasFlag(user, flag) {
+  match(attributes = {}, flag) {
 
-    const { userPermissionsField: field } = this.options
+    const flags = is(flag, Array) ? flag : [ flag ]
 
-    return is(user, Object) && is(user[field], Object) && user[field][flag]
+    return flags.some(f => attributes[f])
 
   }
 
