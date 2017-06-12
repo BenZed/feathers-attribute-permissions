@@ -15,6 +15,8 @@ const DEFAULT_OPTIONS = {
   permissionsField: 'permissions',
 }
 
+const VALID_METHODS = [ 'find', 'get', 'create', 'remove', 'patch', 'update']
+
 /******************************************************************************/
 // Main
 /******************************************************************************/
@@ -23,37 +25,45 @@ export default class Permissions {
 
   constructor(config, options = {}) {
 
-    /**************************************************************************/
-    // Apply Config
-    /**************************************************************************/
+    if (!is(options, Object))
+      throw new Error('Options, if provided, is expected to be an object.')
+
+    const { userEntityField, userIdField, permissionsField } = { ...DEFAULT_OPTIONS, ...options }
+
     define(this)
-    .const.enum('options', { ...DEFAULT_OPTIONS, ...options })
+    .const.enum('options', { userEntityField, userIdField, permissionsField })
     .const.enum('check', permissionsCheck(this))
     .const.enum('filter', permissionsFilter(this))
 
     this::parseConfig(config)
-  }
-
-  async test(user, method, data) {
-
-    const attributes = this::determineAttributes(user, method, data)
-
-    let errors = await this::testMethodFlags(user, attributes, method, data)
-
-    if (!errors && data && this[DATA_FLAGS])
-      errors = await this::testDataFlags(this[DATA_FLAGS], user, attributes, method, data)
-
-    return errors
 
   }
 
-  async pass(user, method, data) {
+  async test(hook) {
 
-    return await ! this.test(user, method, data)
+    const { method } = hook
+
+    if (!VALID_METHODS.includes(method))
+      throw new Error('method must be one of: ' + VALID_METHODS)
+
+    const attributes = this::determineAttributes(hook)
+
+    let errors = await this::testMethodFlags(attributes, hook)
+
+    if (!errors && this[DATA_FLAGS])
+      errors = await this::testDataFlags(this[DATA_FLAGS], attributes, hook)
+
+    return errors || false
 
   }
 
-  match(attributes = {}, flag) {
+  async pass(hook) {
+
+    return ! await this.test(hook)
+
+  }
+
+  attributesHasFlag(attributes = {}, flag) {
 
     const flags = is(flag, Array) ? flag : [ flag ]
 

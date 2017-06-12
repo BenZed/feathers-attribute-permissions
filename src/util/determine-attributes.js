@@ -1,8 +1,12 @@
 import is from 'is-explicit'
 
-export default function determineAttributes(user = {}, method, data = {}) {
+export default function determineAttributes(hook) {
 
-  const { permissionsField : field, userIdField } = this.options
+  const { params, data = {}, method } = hook
+
+  const { permissionsField : field, userIdField, userEntityField } = this.options
+
+  const user = params[userEntityField] || { }
 
   const permissions = user[field] || { }
 

@@ -1,8 +1,12 @@
 import is from 'is-explicit'
 
-export default async function testDataFlags(flags, user, attributes, method, data) {
+export default async function testDataFlags(flags, attributes, hook) {
 
   let errors = false
+
+  const { data } = hook
+  if (!data)
+    return
 
   for (const key in data) {
 
@@ -16,15 +20,15 @@ export default async function testDataFlags(flags, user, attributes, method, dat
 
     const error = is(flag, String, Array)
 
-      ? !this.match(attributes, flag)
+      ? !this.attributesHasFlag(attributes, flag)
 
       : is(flag, Function)
 
-      ? await flag(user, attributes, method, data)
+      ? await flag(attributes, hook)
 
       : is(flag, Object)
 
-      ? await testDataFlags(flag, user, attributes, method, value)
+      ? await testDataFlags(flag, attributes, hook)
 
       : false
 
@@ -39,28 +43,3 @@ export default async function testDataFlags(flags, user, attributes, method, dat
 
   return errors
 }
-
-// export default async function testFlags(flags, attributes, key, params) {
-//
-//   let errors = false
-//
-//   const flag = flags[key]
-//
-//   if (is(flag, Object)) for (const key in flag) {
-//     const error = testFlags(flag[key], attributes, key, params)
-//     if (!error)
-//       continue
-//
-//     errors = errors || {}
-//
-//     errors[key] = error
-//
-//   } else if (is(flag, String, Array))
-//     errors = this.match(attributes, flag)
-//
-//   else if (is(flag, Function))
-//     errors = await flag(attributes, key, params)
-//
-//   return errors
-//
-// }

@@ -1,7 +1,9 @@
 import { METHOD_FLAGS } from './symbols'
 import is from 'is-explicit'
 
-export default async function testMethodFlags(user, attributes, method, data) {
+export default async function testMethodFlags(attributes, hook) {
+
+  const { method } = hook
 
   const flags = this[METHOD_FLAGS]
 
@@ -9,12 +11,11 @@ export default async function testMethodFlags(user, attributes, method, data) {
 
   let error
 
-
   if (is(flag, String, Array))
-    error = !this.match(attributes, flag)
+    error = !this.attributesHasFlag(attributes, flag)
 
   else if (is(flag, Function))
-    error = await flag(user, attributes, method, data)
+    error = await flag(attributes, hook)
 
   return error
 

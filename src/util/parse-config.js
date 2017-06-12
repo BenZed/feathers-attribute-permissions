@@ -78,11 +78,14 @@ function determineMethods(flags) {
 
 export default function parseConfig(config) {
 
+  if (!is(config, Object, String, Function))
+    throw new Error('Requires an object or string as configuration.')
+
   const permissions = this
 
   const methodFlags = permissions::determineMethods(config)
 
-  const dataFlags = is(config, Object) ? config.data : null
+  const dataFlags = config.data
 
   define(permissions)
     .const(METHOD_FLAGS, methodFlags)

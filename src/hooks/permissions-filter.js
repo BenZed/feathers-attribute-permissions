@@ -2,6 +2,8 @@ import { checkContext } from 'feathers-hooks-common/lib/services'
 import { Forbidden } from 'feathers-errors'
 import is from 'is-explicit'
 
+import Permissions from '../permissions'
+
 /******************************************************************************/
 // Helper
 /******************************************************************************/
@@ -31,6 +33,9 @@ function filterDataWithError(data, error) {
 
 export default function(permissions) {
 
+  if (!is(permissions, Permissions))
+    throw new Error('permissions-fitler hook must be configured with a Permissions object.')
+
   const { userEntityField } = permissions.options
 
   return async function(hook) {
@@ -57,7 +62,9 @@ export default function(permissions) {
 
     for (const data of oldResult) {
 
-      const error = await permissions.test(user, method, data)
+      hook.data = data
+
+      const error = await permissions.test(hook)
 
       const filtered = filterDataWithError(data, error)
 
@@ -69,6 +76,8 @@ export default function(permissions) {
 
       else if (filtered)
         newResult.push(filtered)
+
+      delete hook.data
     }
 
     hook.result = isGet ? newResult[0] : newResult

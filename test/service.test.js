@@ -1,92 +1,145 @@
-import { expect, assert } from 'chai'
 import feathers from 'feathers'
+import feathersClient from 'feathers/lib/client'
 import hooks from 'feathers-hooks'
+import rest from 'feathers-rest'
+import restClient from 'feathers-rest/client'
 import memory from 'feathers-memory'
-import clear from 'cli-clear'
-
-/* global describe it */
-
+import fetch from 'isomorphic-fetch'
+import bodyParser from 'body-parser'
+import auth from 'feathers-authentication'
+import authClient from 'feathers-authentication/client'
+import jwt from 'feathers-authentication-jwt'
+import local from 'feathers-authentication-local'
+import errorHandler from 'feathers-errors/handler'
 import Permissions from '../src'
 
+import storage from 'localstorage-memory'
+
+import chai, { expect, assert } from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+
+chai.use(chaiAsPromised)
+
+/* global describe it beforeEach afterEach */
+
 /******************************************************************************/
-// Fake User Hooks
+// Helper
 /******************************************************************************/
 
-function simulateAuth(id = 0) {
+const ms = t => new Promise(resolve => setTimeout(resolve, t || 1000))
 
-  return async function(hook) {
+/******************************************************************************/
+// Setup App
+/******************************************************************************/
 
-    const { app } = hook
-    const users = app.service('users')
+function setupServer() {
 
-    try {
+  const server = feathers()
+    .configure(rest())
+    .configure(hooks())
 
-      const user = await users.get(id)
+    .use(bodyParser.json())
+    .use(bodyParser.urlencoded({ extended: true }))
 
-      hook.params.provider = 'rest'
-      hook.params.user = user
+    .configure(auth({ secret: 'man-in-the-machine' }))
+    .configure(local())
+    .configure(jwt())
 
-      return hook
+    .use('/users', memory())
+    .use('/articles', memory())
 
-    } catch(err) {
-      //user doesn't exist yet
+    .use(errorHandler())
+
+  //hooks
+  const jwtAuth = auth.hooks.authenticate('jwt')
+  const jwtLocalAuth = auth.hooks.authenticate(['jwt', 'local'])
+  const hashPass = local.hooks.hashPassword({ passwordField: 'password' })
+
+  const userPermissions = new Permissions('users')
+  const articlePermissions = new Permissions('articles')
+
+  server.service('users').hooks({
+    before: {
+      all: [ jwtAuth, userPermissions.check ],
+      create: hashPass,
+      patch: hashPass,
+      update: hashPass
+    },
+    after: {
+      all: [ userPermissions.filter ]
     }
-  }
+  })
+
+  server.service('articles').hooks({
+    before: {
+      all: [ jwtAuth, articlePermissions.check ]
+    },
+    after: {
+      all: [ articlePermissions.filter ]
+    }
+  })
+
+  server.service('authentication').hooks({
+    before: {
+      create: [
+        jwtLocalAuth
+      ],
+      remove: [
+        jwtAuth
+      ]
+    }
+  })
+
+  return server
 }
 
-/******************************************************************************/
-// Test App
-/******************************************************************************/
+function setupClient() {
 
-clear()
+  storage.clear()
 
-const app = feathers()
-  .configure(hooks())
-  .use('/users', memory())
-  .use('/articles', memory())
+  return feathersClient()
+    .configure(restClient('http://localhost:3000').fetch(fetch))
+    .configure(hooks())
+    .configure(authClient({ storage }))
 
-const users = app.service('users')
-const articles = app.service('articles')
+}
 
-const articlePermissions = new Permissions({
-  view: 'articles',
-  edit: 'articles',
-  remove: 'articles-admin',
-
-  data: {
-    body: 'articles-body'
-  }
-
-})
 
 /******************************************************************************/
-// Test
+// Service Apps
 /******************************************************************************/
 
-describe('Permissions object', () => {
+describe('Use in services', () => {
 
-  it('takes a definition and an options object', async () => {
+  let server, client
 
-    const user = await users.create({ name: 'Ben' })
+  const login = { email: 'ace@global.com', password: 'cake!' }
 
-    await users.patch(user.id, { permissions: { articles: true, 'articles-view': true, 'articles-body': true } } )
+  beforeEach(async () => {
+    server = setupServer()
+    client = setupClient()
 
-    articles.before({ all: [simulateAuth(user.id), articlePermissions.check] })
-    articles.after({ all: articlePermissions.filter })
+    server.listener = server.listen(3000)
 
-    await articles.create({ name: 'test', body: 'ooooo check it out!'})
-    await articles.create({ name: 'test1', body: 'I am a banana'})
-    await articles.create({ name: 'test2', body: 'Im a goat'})
-    await articles.create({ name: 'test3', body: 'Im a jerry'})
-    await articles.create({ name: 'test4', body: 'This is quite amazing'})
+    await server.service('users').create({  ...login })
+  })
 
-    await users.patch(user.id, { permissions: { articles: true, 'articles-view': true, 'articles-body': false } } )
+  afterEach(() => server.listener.close())
 
-    console.log(await articles.find({}))
+  it('Requires authentication', async () => {
 
-    await articles.patch(4, { body: 'cheese' })
+    const foobarPermissions = new Permissions('foobar')
+    server.use('foobar', memory())
+      .service('foobar')
+      .hooks({
+        after: { all: foobarPermissions.filter }
+      })
 
-    await articles.remove(4)
+    server.use(errorHandler())
+
+    return expect(client.service('foobar').find({}))
+      .to.eventually.be
+      .rejectedWith('User not resolved, permissions could not be determined.')
 
   })
 
