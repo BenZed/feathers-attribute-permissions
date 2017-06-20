@@ -123,7 +123,6 @@ describe('Use in services', () => {
       const allArticleDocs = await articles.find({})
 
       await client.logout()
-
       await client.authenticate({ strategy: 'local', ...joe })
       userEmailShouldBe = joe.email // TODO <- remove this
 
@@ -134,6 +133,7 @@ describe('Use in services', () => {
         : expect(joeRequest).to.eventually.be.rejectedWith(`You cannot view document with id ${query}`)
       )
 
+      await client.logout()
       await client.authenticate({ strategy: 'local', ...admin })
       userEmailShouldBe = admin.email
 
