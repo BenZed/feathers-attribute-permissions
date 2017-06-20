@@ -13,6 +13,7 @@ function getNameOfService(service, app) {
     const other = app.services[name]
     if (other === service)
       return name
+    
   }
 
   return null

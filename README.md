@@ -112,18 +112,6 @@ users.hooks({
 
 })
 
-//Set up a user that has the maximum permissions
-users.create({
-  email: 'admin@yourapp.com',
-  password: 'admin',
-  permissions: {
-    'users-create': true,
-    'users-edit': true,
-    'users-view': true,
-    'users-remove': true
-  }
-})
-
 ```
 
 ## Set up permissions for the articles service
@@ -157,7 +145,7 @@ articles.hooks({
 
 ```
 
-## Set up a client for testing
+## Set up a client
 
 ```js
 
@@ -176,5 +164,28 @@ const client = feathers()
   .configure(rest('http://localHost:3000').fetch(fetch))
   .configure(hooks())
   .configure(auth({ storage }))
+
+```
+
+## Create a couple of users on the server
+
+```js
+
+
+//Set up a user that has the maximum permissions
+server.service('users').create({
+  email: 'admin@yourapp.com',
+  password: 'admin',
+
+  //users need to have a permissions object on them. Permissions 
+  permissions: {
+    'users-create': true,
+    'users-edit': true,
+    'users-view': true,
+    'users-remove': true,
+    'articles-manage': true,
+  }
+})
+
 
 ```

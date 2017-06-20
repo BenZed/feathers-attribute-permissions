@@ -62,6 +62,8 @@ export default function(permissions) {
 
     for (const data of oldResult) {
 
+      //permissions looks for data in hook.data rather than hook.result. this
+      //just makes it universally available
       hook.data = data
 
       const error = await permissions.test(hook)
@@ -72,7 +74,7 @@ export default function(permissions) {
       //but, if the filtered data is null, it means this document is entirely unaccessible
       //and the get request should result in an error
       if (isGet && !filtered && error)
-        throw new Forbidden(error)
+        throw new Forbidden(is(error, String) ? error : `You cannot view document with id ${data[this.id]}`)
 
       else if (filtered)
         newResult.push(filtered)

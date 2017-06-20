@@ -1,7 +1,6 @@
 import chai, { expect, assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 
-
 import clear from 'cli-clear'
 
 /* global describe it before */

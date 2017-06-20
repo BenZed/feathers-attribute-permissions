@@ -1,114 +1,27 @@
-import feathers from 'feathers'
-import feathersClient from 'feathers/lib/client'
-import hooks from 'feathers-hooks'
-import rest from 'feathers-rest'
-import restClient from 'feathers-rest/client'
 import memory from 'feathers-memory'
-import fetch from 'isomorphic-fetch'
-import bodyParser from 'body-parser'
-import auth from 'feathers-authentication'
-import authClient from 'feathers-authentication/client'
-import jwt from 'feathers-authentication-jwt'
-import local from 'feathers-authentication-local'
+
 import errorHandler from 'feathers-errors/handler'
 import Permissions from '../src'
 
-import storage from 'localstorage-memory'
-
-import chai, { expect, assert } from 'chai'
+import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 
+import setupClient from './helper/setup-client'
+import setupServer from './helper/setup-server'
+
+/* global describe it beforeEach afterEach */
+
+/******************************************************************************/
+// Extend Chai
+/******************************************************************************/
+
 chai.use(chaiAsPromised)
-
-/* global describe it beforeEach afterEach before */
-
-/******************************************************************************/
-// Helper
-/******************************************************************************/
-
-const ms = t => new Promise(resolve => setTimeout(resolve, t || 1000))
-
-/******************************************************************************/
-// Setup App
-/******************************************************************************/
-
-function setupServer() {
-
-  const server = feathers()
-    .configure(rest())
-    .configure(hooks())
-
-    .use(bodyParser.json())
-    .use(bodyParser.urlencoded({ extended: true }))
-
-    .configure(auth({ secret: 'man-in-the-machine' }))
-    .configure(local())
-    .configure(jwt())
-
-    .use('/users', memory())
-    .use('/articles', memory())
-
-    .use(errorHandler())
-
-  //hooks
-  const jwtAuth = auth.hooks.authenticate('jwt')
-  const jwtLocalAuth = auth.hooks.authenticate(['jwt', 'local'])
-  const hashPass = local.hooks.hashPassword({ passwordField: 'password' })
-
-  const userPermissions = new Permissions('users')
-  const articlePermissions = new Permissions('articles')
-
-  server.service('users').hooks({
-    before: {
-      all: [ jwtAuth, userPermissions.check ],
-      create: hashPass,
-      patch: hashPass,
-      update: hashPass
-    },
-    after: {
-      all: [ userPermissions.filter ]
-    }
-  })
-
-  server.service('articles').hooks({
-    before: {
-      all: [ jwtAuth, articlePermissions.check ]
-    },
-    after: {
-      all: [ articlePermissions.filter ]
-    }
-  })
-
-  server.service('authentication').hooks({
-    before: {
-      create: [
-        jwtLocalAuth
-      ],
-      remove: [
-        jwtAuth
-      ]
-    }
-  })
-
-  return server
-}
-
-function setupClient() {
-
-  storage.clear()
-
-  return feathersClient()
-    .configure(restClient('http://localhost:3000').fetch(fetch))
-    .configure(hooks())
-    .configure(authClient({ storage }))
-
-}
 
 /******************************************************************************/
 // Service Apps
 /******************************************************************************/
 
-describe('Basic use in services', () => {
+describe('Use in services', () => {
 
   let server, client
 
@@ -123,12 +36,19 @@ describe('Basic use in services', () => {
     }
   }
 
+  const joe = {
+    email: 'joe@user.com',
+    password: 'joe'
+  }
+
   beforeEach(async () => {
     server = setupServer()
 
-    await server
-      .service('users')
-      .create({ ...admin })
+    const users = server.service('users')
+
+    await users.create({ ...admin })
+
+    await users.create({ ...joe })
 
     server.listener = server.listen(3000)
 
@@ -155,25 +75,18 @@ describe('Basic use in services', () => {
 
   })
 
-  describe('User edit calls must pass permission tests', async () => {
+  describe('User edit/remove calls must pass permission tests', async () => {
 
     const testCheck = (method, ...args) => async () => {
-      const joe = { email: 'joe@user.com', password: 'joe' }
 
-      await server.service('users').create({ ...joe })
-
-      await server.service('articles').create({ body: 'New Article' })
+      await server.service('articles').create({ body: 'Article Created Serverside' })
 
       await client.authenticate({ strategy: 'local', ...joe })
 
       await expect(client.service('articles')[method](...args))
         .to.eventually.be.rejectedWith(`You cannot ${method} articles.`)
 
-      await client.authenticate({
-        strategy: 'local',
-        email: 'admin@email.com',
-        password: 'admin'
-      })
+      await client.authenticate({ strategy: 'local', ...admin })
 
       await expect(client.service('articles')[method](...args))
         .to.eventually.be.fulfilled
@@ -185,16 +98,78 @@ describe('Basic use in services', () => {
 
     it('update', testCheck('update', 0, { body: 'Updated Article.'}))
 
-    it('remove', testCheck('remove', 0))
+    it('remove', testCheck('remove', 0 ))
 
   })
 
   describe('User view calls must be filtered by permissions tests', async () => {
 
-    const testFilter = (method, query) => undefined
+    const testFilter = (method, query) => async () => {
+
+      const articles = server.service('articles')
+
+
+      await articles.create({ body: 'Article 1'})
+      await articles.create({ body: 'Article 2'})
+      await articles.create({ body: 'Article 3'})
+      await articles.create({ body: 'Article 4'})
+
+      //TODO Remove this
+      let userEmailShouldBe = null
+      articles.hooks({ before: {
+        all: hook => hook.params.user && console.log(hook.params.user.email, 'should be', userEmailShouldBe)
+      }})
+
+      const allArticleDocs = await articles.find({})
+
+      await client.logout()
+
+      await client.authenticate({ strategy: 'local', ...joe })
+      userEmailShouldBe = joe.email // <-  TODO remove this
+
+      const joeRequest = client.service('articles')[method](query)
+
+      await (method === 'find'
+        ? expect(joeRequest).to.eventually.deep.equal([])
+        : expect(joeRequest).to.eventually.be.rejectedWith(`You cannot view document with id ${query}`)
+      )
+
+      await client.authenticate({ strategy: 'local', ...admin })
+      userEmailShouldBe = admin.email // <-  TODO remove this
+
+      const adminRequest = client.service('articles')[method](query)
+
+      await (
+        method === 'find'
+          ? expect(adminRequest).to.eventually.deep.equal(allArticleDocs)
+          : expect(adminRequest).to.eventually.deep.equal(allArticleDocs[query])
+      )
+
+    }
 
     it('find', testFilter('find', {}))
     it('get', testFilter('get', 0))
+
+  })
+
+  describe('User edit calls must pass individual field permissions', () => {
+
+    it('create')
+    it('update')
+    it('patch')
+
+  })
+
+  describe('User view calls must filter individual field permissions', () => {
+
+    it('find')
+    it('get')
+
+  })
+
+  describe('Documents may have permissions that overrides specific users', () => {
+
+    it('')
 
   })
 
