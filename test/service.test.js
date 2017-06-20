@@ -125,7 +125,7 @@ describe('Use in services', () => {
       await client.logout()
 
       await client.authenticate({ strategy: 'local', ...joe })
-      userEmailShouldBe = joe.email // <-  TODO remove this
+      userEmailShouldBe = joe.email // TODO <- remove this
 
       const joeRequest = client.service('articles')[method](query)
 
@@ -135,7 +135,7 @@ describe('Use in services', () => {
       )
 
       await client.authenticate({ strategy: 'local', ...admin })
-      userEmailShouldBe = admin.email // <-  TODO remove this
+      userEmailShouldBe = admin.email
 
       const adminRequest = client.service('articles')[method](query)
 
