@@ -57,12 +57,8 @@ const jwtAuth = auth.hooks.authentication('jwt')
 
 server.service('authentication').hooks({
   before: {
-    create: [
-      jwtLocalAuth
-    ],
-    remove: [
-      jwtAuth
-    ]
+    create: [ jwtLocalAuth ],
+    remove: [ jwtAuth ]
   }
 })
 
@@ -134,6 +130,30 @@ users.create({
 
 ```js
 
+const articlePermissions = new Permissions({
+  view:  ['articles', 'articles-manage'],
+  edit:   'articles-manage'
+  create: 'articles-manage',
+  remove: 'articles-manage'
+})
+
+const articles = server.service('articles')
+
+articles.hooks({
+
+  //you can also set up the check hook as an 'all' hook,
+  //and it will be ignored during 'find' and 'get'
+  before: {
+    all: [ jwtAuth, articlePermissions.check ]
+  }
+
+  //likewise with the filter hook. It will be ignored during
+  //'update', 'patch', 'create' and 'remove'
+  after: {
+    all:  articlePermissions.filter
+  }
+
+})
 
 ```
 

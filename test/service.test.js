@@ -20,7 +20,7 @@ import chaiAsPromised from 'chai-as-promised'
 
 chai.use(chaiAsPromised)
 
-/* global describe it beforeEach afterEach */
+/* global describe it beforeEach afterEach before */
 
 /******************************************************************************/
 // Helper
@@ -104,24 +104,36 @@ function setupClient() {
 
 }
 
-
 /******************************************************************************/
 // Service Apps
 /******************************************************************************/
 
-describe('Use in services', () => {
+describe('Basic use in services', () => {
 
   let server, client
 
-  const login = { email: 'ace@global.com', password: 'cake!' }
+  const admin = {
+    email: 'admin@email.com',
+    password: 'admin',
+    permissions: {
+      'articles-create': true,
+      'articles-edit': true,
+      'articles-view': true,
+      'articles-remove': true
+    }
+  }
 
   beforeEach(async () => {
     server = setupServer()
-    client = setupClient()
+
+    await server
+      .service('users')
+      .create({ ...admin })
 
     server.listener = server.listen(3000)
 
-    await server.service('users').create({  ...login })
+    client = setupClient()
+
   })
 
   afterEach(() => server.listener.close())
@@ -140,6 +152,49 @@ describe('Use in services', () => {
     return expect(client.service('foobar').find({}))
       .to.eventually.be
       .rejectedWith('User not resolved, permissions could not be determined.')
+
+  })
+
+  describe('User edit calls must pass permission tests', async () => {
+
+    const testCheck = (method, ...args) => async () => {
+      const joe = { email: 'joe@user.com', password: 'joe' }
+
+      await server.service('users').create({ ...joe })
+
+      await server.service('articles').create({ body: 'New Article' })
+
+      await client.authenticate({ strategy: 'local', ...joe })
+
+      await expect(client.service('articles')[method](...args))
+        .to.eventually.be.rejectedWith(`You cannot ${method} articles.`)
+
+      await client.authenticate({
+        strategy: 'local',
+        email: 'admin@email.com',
+        password: 'admin'
+      })
+
+      await expect(client.service('articles')[method](...args))
+        .to.eventually.be.fulfilled
+    }
+
+    it('create', testCheck('create', { body: 'New Article.'}))
+
+    it('patch', testCheck('patch', 0, { body: 'Patched Article.'}))
+
+    it('update', testCheck('update', 0, { body: 'Updated Article.'}))
+
+    it('remove', testCheck('remove', 0))
+
+  })
+
+  describe('User view calls must be filtered by permissions tests', async () => {
+
+    const testFilter = (method, query) => undefined
+
+    it('find', testFilter('find', {}))
+    it('get', testFilter('get', 0))
 
   })
 
