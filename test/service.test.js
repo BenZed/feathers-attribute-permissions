@@ -11,7 +11,7 @@ import setupServer from './helper/setup-server'
 
 /* global describe it beforeEach afterEach */
 
-const USE_SOCKET_IO_INSTEAD_OF_REST = false
+const USE_SOCKET_IO_INSTEAD_OF_REST = true
 
 /******************************************************************************/
 // Extend Chai
