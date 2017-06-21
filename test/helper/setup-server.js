@@ -1,6 +1,7 @@
 import feathers from 'feathers'
 import rest from 'feathers-rest'
 import hooks from 'feathers-hooks'
+import socketio from 'feathers-socketio'
 import bodyParser from 'body-parser'
 import auth from 'feathers-authentication'
 import jwt from 'feathers-authentication-jwt'
@@ -12,11 +13,14 @@ import Permissions from '../../src'
 
 export default function setupServer({
   userConfig = 'users',
-  articleConfig = 'articles'
+  articleConfig = 'articles',
+  useSocketIO = false
 } = {}) {
 
+  const provider = useSocketIO ? socketio() : rest()
+
   const server = feathers()
-    .configure(rest())
+    .configure(provider)
     .configure(hooks())
 
     .use(bodyParser.json())

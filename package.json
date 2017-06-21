@@ -47,10 +47,12 @@
     "feathers-hooks": "^2.0.1",
     "feathers-memory": "^1.1.0",
     "feathers-rest": "^1.7.3",
+    "feathers-socketio": "^2.0.0",
     "isomorphic-fetch": "^2.2.1",
     "localstorage-memory": "^1.0.2",
     "mocha": "^3.4.2",
-    "nodemon": "^1.11.0"
+    "nodemon": "^1.11.0",
+    "socket.io-client": "^2.0.3"
   },
   "dependencies": {
     "define-utility": "^1.0.2",

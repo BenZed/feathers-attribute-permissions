@@ -1,17 +1,23 @@
-import feathersClient from 'feathers/lib/client'
+import feathers from 'feathers/lib/client'
 import hooks from 'feathers-hooks'
-import restClient from 'feathers-rest/client'
+import rest from 'feathers-rest/client'
+import socketio from 'feathers-socketio/client'
 import fetch from 'isomorphic-fetch'
-import authClient from 'feathers-authentication/client'
+import auth from 'feathers-authentication/client'
 import storage from 'localstorage-memory'
+import io from 'socket.io-client'
 
-export default function setupClient() {
+export default function setupClient({ useSocketIO = true } = {}) {
 
   storage.clear()
 
-  return feathersClient()
-    .configure(restClient('http://localhost:3000').fetch(fetch))
+  const provider = useSocketIO
+    ? socketio(io('http://localhost:3000'))
+    : rest('http://localhost:3000').fetch(fetch)
+
+  return feathers()
+    .configure(provider)
     .configure(hooks())
-    .configure(authClient({ storage }))
+    .configure(auth({ storage }))
 
 }

@@ -11,6 +11,8 @@ import setupServer from './helper/setup-server'
 
 /* global describe it beforeEach afterEach */
 
+const USE_SOCKET_IO_INSTEAD_OF_REST = false
+
 /******************************************************************************/
 // Extend Chai
 /******************************************************************************/
@@ -42,7 +44,7 @@ describe('Use in services', () => {
   }
 
   beforeEach(async () => {
-    server = setupServer()
+    server = setupServer({ useSocketIO: USE_SOCKET_IO_INSTEAD_OF_REST })
 
     const users = server.service('users')
 
@@ -52,7 +54,7 @@ describe('Use in services', () => {
 
     server.listener = server.listen(3000)
 
-    client = setupClient()
+    client = setupClient({ useSocketIO: USE_SOCKET_IO_INSTEAD_OF_REST })
 
   })
 
@@ -81,11 +83,13 @@ describe('Use in services', () => {
 
       await server.service('articles').create({ body: 'Article Created Serverside' })
 
+      await client.logout()
       await client.authenticate({ strategy: 'local', ...joe })
 
       await expect(client.service('articles')[method](...args))
         .to.eventually.be.rejectedWith(`You cannot ${method} articles.`)
 
+      await client.logout()
       await client.authenticate({ strategy: 'local', ...admin })
 
       await expect(client.service('articles')[method](...args))
@@ -107,7 +111,6 @@ describe('Use in services', () => {
     const testFilter = (method, query) => async () => {
 
       const articles = server.service('articles')
-
 
       await articles.create({ body: 'Article 1'})
       await articles.create({ body: 'Article 2'})
@@ -169,7 +172,8 @@ describe('Use in services', () => {
 
   describe('Documents may have permissions that overrides specific users', () => {
 
-    it('')
+    it('throws if users edit forbidden fields')
+    it('hides forbidden fields on view results')
 
   })
 
