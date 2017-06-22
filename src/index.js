@@ -1,7 +1,20 @@
-import { permissionsCheck, permissionsFilter } from './hooks'
 
 import Permissions from './permissions'
 
-export { permissionsCheck, permissionsFilter}
+import { permissionsCheck, permissionsFilter } from './hooks'
+
+import { attributesHasFlag, fieldEditView } from './helper'
+
+/******************************************************************************/
+// Exports 
+/******************************************************************************/
 
 export default Permissions
+
+export {
+
+  permissionsCheck, permissionsFilter,
+
+  attributesHasFlag, fieldEditView
+
+}

@@ -47,31 +47,27 @@ describe('Permissions class', () => {
 
   })
 
-  describe('configuration', () => {
+  describe('configuration', async () => {
 
-    it('string quick-config creates a flag for each service type', async () => {
+    it('string quick-config creates a method for each service type', async () => {
 
       const permissions = new Permissions('cake')
 
       const [ METHODS ] = Object.getOwnPropertySymbols(permissions)
       const methods = permissions[METHODS]
 
-      assert.deepEqual(methods, {
-        find: 'cake-view',
-        get: 'cake-view',
-        patch: 'cake-edit',
-        update: 'cake-edit',
-        create: 'cake-create',
-        remove: 'cake-remove'
-      })
+      assert.equal(await methods.create({ 'cake-create' : true }, {}), false)
+      assert.equal(await methods.find(  { 'cake-view'   : true }, {}), false)
+      assert.equal(await methods.get(   { 'cake-view'   : true }, {}), false)
+      assert.equal(await methods.remove({ 'cake-remove' : true }, {}), false)
+      assert.equal(await methods.update({ 'cake-edit'   : true }, {}), false)
+      assert.equal(await methods.patch( { 'cake-edit'   : true }, {}), false)
 
     })
 
   })
 
   const permissions = new Permissions('cake')
-
-  const [ METHOD ] = Object.getOwnPropertySymbols(permissions)
 
   const user = {
     _id: 1,
@@ -111,22 +107,6 @@ describe('Permissions class', () => {
       assert.equal(await permissions.test(createHook('patch')), true)
       assert.equal(await permissions.test(createHook('remove')), true)
       assert.equal(await permissions.test(createHook('create')), true)
-
-    })
-
-    it('creates basic flags with a string config', () => {
-
-
-      const flags = permissions[METHOD]
-
-      assert.deepEqual(flags, {
-        find: 'cake-view',
-        get: 'cake-view',
-        create: 'cake-create',
-        update: 'cake-edit',
-        remove: 'cake-remove',
-        patch: 'cake-edit',
-      })
 
     })
 

@@ -11,13 +11,14 @@ import errorHandler from 'feathers-errors/handler'
 
 import Permissions from '../../src'
 
+import USE_SOCKET_IO_INSTEAD_OF_REST from './provider'
+
 export default function setupServer({
   userConfig = 'users',
-  articleConfig = 'articles',
-  useSocketIO = false
+  articleConfig = 'articles'
 } = {}) {
 
-  const provider = useSocketIO ? socketio() : rest()
+  const provider = USE_SOCKET_IO_INSTEAD_OF_REST ? socketio() : rest()
 
   const server = feathers()
     .configure(provider)

@@ -11,8 +11,6 @@ import setupServer from './helper/setup-server'
 
 /* global describe it beforeEach afterEach */
 
-const USE_SOCKET_IO_INSTEAD_OF_REST = true
-
 /******************************************************************************/
 // Extend Chai
 /******************************************************************************/
@@ -23,7 +21,9 @@ chai.use(chaiAsPromised)
 // Service Apps
 /******************************************************************************/
 
-describe('Use in services', () => {
+describe('Method level usage in Services', function() {
+
+  this.slow(400)
 
   let server, client
 
@@ -44,7 +44,7 @@ describe('Use in services', () => {
   }
 
   beforeEach(async () => {
-    server = setupServer({ useSocketIO: USE_SOCKET_IO_INSTEAD_OF_REST })
+    server = setupServer()
 
     const users = server.service('users')
 
@@ -54,7 +54,7 @@ describe('Use in services', () => {
 
     server.listener = server.listen(3000)
 
-    client = setupClient({ useSocketIO: USE_SOCKET_IO_INSTEAD_OF_REST })
+    client = setupClient()
 
   })
 
@@ -117,18 +117,10 @@ describe('Use in services', () => {
       await articles.create({ body: 'Article 3'})
       await articles.create({ body: 'Article 4'})
 
-      //TODO Remove this
-      let userEmailShouldBe = null
-      articles.hooks({ before: {
-        all: hook => hook.params.user && console.log(hook.params.user.email, 'should be', userEmailShouldBe)
-      }})
-
       const allArticleDocs = await articles.find({})
 
       await client.logout()
       await client.authenticate({ strategy: 'local', ...joe })
-      userEmailShouldBe = joe.email // TODO <- remove this
-
       const joeRequest = client.service('articles')[method](query)
 
       await (method === 'find'
@@ -138,7 +130,6 @@ describe('Use in services', () => {
 
       await client.logout()
       await client.authenticate({ strategy: 'local', ...admin })
-      userEmailShouldBe = admin.email
 
       const adminRequest = client.service('articles')[method](query)
 
@@ -152,28 +143,6 @@ describe('Use in services', () => {
 
     it('find', testFilter('find', {}))
     it('get', testFilter('get', 0))
-
-  })
-
-  describe('User edit calls must pass individual field permissions', () => {
-
-    it('create')
-    it('update')
-    it('patch')
-
-  })
-
-  describe('User view calls must filter individual field permissions', () => {
-
-    it('find')
-    it('get')
-
-  })
-
-  describe('Documents may have permissions that overrides specific users', () => {
-
-    it('throws if users edit forbidden fields')
-    it('hides forbidden fields on view results')
 
   })
 

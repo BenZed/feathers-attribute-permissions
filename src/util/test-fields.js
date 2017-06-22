@@ -1,4 +1,3 @@
-import is from 'is-explicit'
 
 export default async function testDataFlags(flags, attributes, hook) {
 
@@ -15,23 +14,10 @@ export default async function testDataFlags(flags, attributes, hook) {
     if (!value)
       continue
 
-    const flag = flags[key]
+    const method = flags[key]
     //don't need to check permissions if there are no permissions to check
 
-    const error = is(flag, String, Array)
-
-      ? !this.attributesHasFlag(attributes, flag)
-
-      : is(flag, Function)
-
-      ? await flag(attributes, hook)
-
-      : is(flag, Object)
-
-      ? await testDataFlags(flag, attributes, hook)
-
-      : false
-
+    const error = await method(attributes, hook, value)
     if (!error)
       continue
 

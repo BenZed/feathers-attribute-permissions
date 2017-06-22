@@ -7,11 +7,13 @@ import auth from 'feathers-authentication/client'
 import storage from 'localstorage-memory'
 import io from 'socket.io-client'
 
-export default function setupClient({ useSocketIO = true } = {}) {
+import USE_SOCKET_IO_INSTEAD_OF_REST from './provider'
+
+export default function setupClient() {
 
   storage.clear()
 
-  const provider = useSocketIO
+  const provider = USE_SOCKET_IO_INSTEAD_OF_REST
     ? socketio(io('http://localhost:3000'))
     : rest('http://localhost:3000').fetch(fetch)
 

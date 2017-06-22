@@ -1,6 +1,6 @@
 import { permissionsCheck, permissionsFilter } from './hooks'
-import { parseConfig, testDataFlags, testMethodFlags, determineAttributes,
- DATA_FLAGS } from './util'
+import { parseConfig, testFields, testMethods, determineAttributes,
+ FIELD_FLAGS } from './util'
 
 import is from 'is-explicit'
 import define from 'define-utility'
@@ -48,27 +48,17 @@ export default class Permissions {
 
     const attributes = this::determineAttributes(hook)
 
-    let errors = await this::testMethodFlags(attributes, hook)
+    let errors = await this::testMethods(attributes, hook)
 
-    if (!errors && this[DATA_FLAGS])
-      errors = await this::testDataFlags(this[DATA_FLAGS], attributes, hook)
+    if (!errors && this[FIELD_FLAGS])
+      errors = await this::testFields(this[FIELD_FLAGS], attributes, hook)
 
     return errors || false
 
   }
 
   async pass(hook) {
-
     return ! await this.test(hook)
-
-  }
-
-  attributesHasFlag(attributes = {}, flag) {
-
-    const flags = is(flag, Array) ? flag : [ flag ]
-
-    return flags.some(f => attributes[f])
-
   }
 
 }

@@ -10,7 +10,7 @@ ___
 
 ___
 
-# QuickStart
+# Example
 
 The following assumes you're familiar with [feathers.js](http://www.feathersjs.com) workflow. If you've never heard of [feathers.js](http://www.feathersjs.com) before, it's great. Learn it: [feathers.js](http://www.feathersjs.com)
 
@@ -171,13 +171,18 @@ const client = feathers()
 
 ```js
 
-
 //Set up a user that has the maximum permissions
-server.service('users').create({
+const userService = server.service('users')
+
+userService.create({
   email: 'admin@yourapp.com',
   password: 'admin',
 
-  //users need to have a permissions object on them. Permissions 
+  //users need to have a permissions object on them. Each field should
+  //be a permissions flag set to true.
+
+  //undefined flags, or flags set to a falsy value will result in permissions
+  //being denied
   permissions: {
     'users-create': true,
     'users-edit': true,
@@ -185,6 +190,17 @@ server.service('users').create({
     'users-remove': true,
     'articles-manage': true,
   }
+})
+
+userService.create({
+  email: 'joe@yourapp.com',
+  password: 'joe-user',
+
+  permissions: {
+    'users-view': true,
+    'articles': true
+  }
+
 })
 
 

@@ -1,6 +1,6 @@
 {
   "name": "feathers-attribute-permissions",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A versioning service for feathers.js",
   "main": "lib",
   "scripts": {
@@ -58,6 +58,6 @@
     "define-utility": "^1.0.2",
     "feathers-errors": "^2.8.1",
     "feathers-hooks-common": "^3.5.1",
-    "is-explicit": "^1.1.0"
+    "is-explicit": "^1.2.1"
   }
 }

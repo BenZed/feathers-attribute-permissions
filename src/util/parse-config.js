@@ -1,74 +1,67 @@
 import is from 'is-explicit'
-import { METHOD_FLAGS, DATA_FLAGS } from './symbols'
+import { METHOD_FLAGS, FIELD_FLAGS } from './symbols'
+import { attributesHasFlag } from '../helper'
 
 import define from 'define-utility'
 
 /******************************************************************************/
-// Defailts
+// Defaults
 /******************************************************************************/
 
-const allPass = {
-  find: false,
-  get: false,
-  patch: false,
-  update: false,
-  create: false,
-  remove: false
+function pass() {
+  return false
+}
+
+function defaultAttributeCheck(flag) {
+  return attr => !attributesHasFlag(attr, flag)
 }
 
 /******************************************************************************/
 // Helper
 /******************************************************************************/
 
-function methodFlagsFromString(str) {
+function determineMethodFunc(config, main, alt) {
+
+  const func = is(config, String)              ? ensureFuncs(`${config}-${alt || main}`)
+    : is(config, Object) && !is(config, Array) ? ensureFuncs(config[main] || config[alt])
+    : ensureFuncs(config)
+
+  if (is.plainObject(func))
+    throw new Error(`Invalid configuration: config.${config[main] ? main : alt} must be a string, array of strings or function.`)
+
+  return func
+}
+
+function determineMethodFuncs(config) {
 
   return {
-    find: str + '-view',
-    get: str + '-view',
-    update: str + '-edit',
-    patch: str + '-edit',
-    create: str + '-create',
-    remove: str + '-remove'
+    find:   determineMethodFunc(config, 'find',   'view'),
+    get:    determineMethodFunc(config, 'get',    'view'),
+    patch:  determineMethodFunc(config, 'patch',  'edit'),
+    update: determineMethodFunc(config, 'update', 'edit'),
+    create: determineMethodFunc(config, 'create'),
+    remove: determineMethodFunc(config, 'remove')
   }
 
 }
 
-function methodFlagsFromFunction(func) {
-  return {
-    find: func,
-    get: func,
-    update: func,
-    patch: func,
-    create: func,
-    remove: func
-  }
+function ensureFuncsFromObject(input) {
+  const output = {}
+
+  for (const key of input)
+    output[key] = ensureFuncs(input[key])
+
+  return output
 }
 
-function methodFlagsFromObject(config) {
+function ensureFuncs(config) {
 
-  const { flag, view, edit, find, get, update, patch, create, remove } = config
+  const func = is(config, String) || is.arrayOf(config, String) ? defaultAttributeCheck(config)
+    : is.plainObject(config) ? ensureFuncsFromObject(config)
+    : is(config, Function) ? config
+    : pass
 
-  return is(flag) ? determineMethods(flag) : {
-    find: find || view,
-    get: get || view,
-    update: update || edit,
-    patch: patch || edit,
-    create,
-    remove
-  }
-
-}
-
-function determineMethods(flags) {
-
-  const permissions = this
-
-  const methods = is(flags, String) ? permissions::methodFlagsFromString(flags)
-    : is(flags, Function) ? permissions::methodFlagsFromFunction(flags)
-    : is(flags, Object) ? permissions::methodFlagsFromObject(flags)
-    : { }
-
-  return { ...allPass, ...methods}
+  return func
 
 }
 
@@ -83,12 +76,12 @@ export default function parseConfig(config) {
 
   const permissions = this
 
-  const methodFlags = permissions::determineMethods(config)
+  const methodFuncs = permissions::determineMethodFuncs(config)
 
-  const dataFlags = config.data
+  const fieldFuncs = config.fields ? permissions::ensureFuncs(config.fields) : null
 
   define(permissions)
-    .const(METHOD_FLAGS, methodFlags)
-    .const(DATA_FLAGS, dataFlags)
+    .const(METHOD_FLAGS, methodFuncs)
+    .const(FIELD_FLAGS, fieldFuncs)
 
 }
