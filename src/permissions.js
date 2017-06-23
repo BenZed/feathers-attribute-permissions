@@ -1,6 +1,5 @@
 import { permissionsCheck, permissionsFilter } from './hooks'
-import { parseConfig, testFields, testMethods, determineAttributes,
- FIELD_FLAGS } from './util'
+import { parseConfig, testObject, HANDLERS, determineAttributes } from './util'
 
 import is from 'is-explicit'
 import define from 'define-utility'
@@ -12,6 +11,7 @@ import define from 'define-utility'
 const DEFAULT_OPTIONS = {
   userEntityField: 'user',
   userIdField: '_id',
+  originalField: 'original',
   permissionsField: 'permissions',
 }
 
@@ -25,13 +25,13 @@ export default class Permissions {
 
   constructor(config, options = {}) {
 
-    if (!is(options, Object))
-      throw new Error('Options, if provided, is expected to be an object.')
+    if (!is.plainObject(options))
+      throw new Error('Options, if provided, is expected to be a plain object.')
 
-    const { userEntityField, userIdField, permissionsField } = { ...DEFAULT_OPTIONS, ...options }
+    const { userEntityField, userIdField, permissionsField, originalField } = { ...DEFAULT_OPTIONS, ...options }
 
     define(this)
-    .const.enum('options', { userEntityField, userIdField, permissionsField })
+    .const.enum('options', { userEntityField, userIdField, permissionsField, originalField })
     .const.enum('check', permissionsCheck(this))
     .const.enum('filter', permissionsFilter(this))
 
@@ -41,17 +41,18 @@ export default class Permissions {
 
   async test(hook) {
 
-    const { method } = hook
+    const { data, method } = hook
 
     if (!VALID_METHODS.includes(method))
       throw new Error('method must be one of: ' + VALID_METHODS)
 
-    const attributes = this::determineAttributes(hook)
+    const attributes = await this::determineAttributes(hook)
 
-    let errors = await this::testMethods(attributes, hook)
+    const test = this[HANDLERS][method]
 
-    if (!errors && this[FIELD_FLAGS])
-      errors = await this::testFields(this[FIELD_FLAGS], attributes, hook)
+    const errors = is.plainObject(test)
+      ? await testObject(test, attributes, hook, data)
+      : await test(attributes, hook, data)
 
     return errors || false
 

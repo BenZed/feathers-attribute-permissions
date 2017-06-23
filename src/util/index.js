@@ -1,12 +1,12 @@
 
 import parseConfig from './parse-config'
-import testFields from './test-fields'
-import testMethods from './test-methods'
+import testObject from './test-object'
 import determineAttributes from './determine-attributes'
+import attributesHasFlag from './attributes-has-flag'
 
-import { METHOD_FLAGS, FIELD_FLAGS } from './symbols'
+import { HANDLERS } from './symbols'
 
 export {
-  parseConfig, testFields, testMethods, determineAttributes,
-  METHOD_FLAGS, FIELD_FLAGS
+  parseConfig, testObject, determineAttributes, attributesHasFlag,
+  HANDLERS
 }

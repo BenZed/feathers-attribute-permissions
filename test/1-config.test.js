@@ -38,9 +38,10 @@ describe('Permissions class', () => {
       expect(() => new Permissions(config)).to.not.throw()
     );
 
+
     [
       [100, {}, 'Requires an object or string as configuration.'],
-      [{}, 'oy', 'Options, if provided, is expected to be an object.']
+      [{}, 'oy', 'Options, if provided, is expected to be a plain object.']
     ].forEach(([config, options, error]) =>
       expect(() => new Permissions(config, options)).to.throw(error)
     )
@@ -53,8 +54,8 @@ describe('Permissions class', () => {
 
       const permissions = new Permissions('cake')
 
-      const [ METHODS ] = Object.getOwnPropertySymbols(permissions)
-      const methods = permissions[METHODS]
+      const [ HANDLERS ] = Object.getOwnPropertySymbols(permissions)
+      const methods = permissions[HANDLERS]
 
       assert.equal(await methods.create({ 'cake-create' : true }, {}), false)
       assert.equal(await methods.find(  { 'cake-view'   : true }, {}), false)

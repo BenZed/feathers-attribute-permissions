@@ -36,7 +36,7 @@ export default function(permissions) {
   if (!is(permissions, Permissions))
     throw new Error('permissions-fitler hook must be configured with a Permissions object.')
 
-  const { userEntityField } = permissions.options
+  const { userEntityField, originalField } = permissions.options
 
   return async function(hook) {
 
@@ -65,6 +65,10 @@ export default function(permissions) {
       //permissions looks for data in hook.data rather than hook.result. this
       //just makes it universally available
       hook.data = data
+
+      //just in case some other hook fills the original field, we set it to null so
+      //it wont fuck us up
+      hook[originalField] = null
 
       const error = await permissions.test(hook)
 

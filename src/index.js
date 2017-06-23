@@ -3,10 +3,10 @@ import Permissions from './permissions'
 
 import { permissionsCheck, permissionsFilter } from './hooks'
 
-import { attributesHasFlag, fieldEditView } from './helper'
+import { attributesHasFlag } from './util'
 
 /******************************************************************************/
-// Exports 
+// Exports
 /******************************************************************************/
 
 export default Permissions
@@ -15,6 +15,6 @@ export {
 
   permissionsCheck, permissionsFilter,
 
-  attributesHasFlag, fieldEditView
+  attributesHasFlag
 
 }

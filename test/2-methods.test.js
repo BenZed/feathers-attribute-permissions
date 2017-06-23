@@ -52,13 +52,13 @@ describe('Method level usage in Services', function() {
 
     await users.create({ ...joe })
 
-    server.listener = server.listen(3000)
+    server.start()
 
     client = setupClient()
 
   })
 
-  afterEach(() => server.listener.close())
+  afterEach(() => server.stop())
 
   it('Requires authentication', async () => {
 

@@ -2,16 +2,46 @@ import feathers from 'feathers'
 import rest from 'feathers-rest'
 import hooks from 'feathers-hooks'
 import socketio from 'feathers-socketio'
-import bodyParser from 'body-parser'
+
 import auth from 'feathers-authentication'
 import jwt from 'feathers-authentication-jwt'
 import local from 'feathers-authentication-local'
+
 import memory from 'feathers-memory'
+
 import errorHandler from 'feathers-errors/handler'
+
+import bodyParser from 'body-parser'
 
 import Permissions from '../../src'
 
+/******************************************************************************/
+// DEBUG
+/******************************************************************************/
+
 import USE_SOCKET_IO_INSTEAD_OF_REST from './provider'
+
+/******************************************************************************/
+// Hooks
+/******************************************************************************/
+
+const jwtAuth = auth.hooks.authenticate('jwt')
+const jwtLocalAuth = auth.hooks.authenticate(['jwt', 'local'])
+const hashPass = local.hooks.hashPassword({ passwordField: 'password' })
+
+const setAuthor = hook => {
+
+  const { params: { user } } = hook
+
+  if (user)
+    hook.data.author = user.id
+
+  return hook
+}
+
+/******************************************************************************/
+// Export
+/******************************************************************************/
 
 export default function setupServer({
   userConfig = 'users',
@@ -36,13 +66,11 @@ export default function setupServer({
 
     .use(errorHandler())
 
-  //hooks
-  const jwtAuth = auth.hooks.authenticate('jwt')
-  const jwtLocalAuth = auth.hooks.authenticate(['jwt', 'local'])
-  const hashPass = local.hooks.hashPassword({ passwordField: 'password' })
-
   const userPermissions = new Permissions(userConfig)
   const articlePermissions = new Permissions(articleConfig)
+
+  server.start = (port = 3000) => server.listener = server.listen(port)
+  server.stop = () => server.listener && server.listener.close()
 
   server.service('users').hooks({
     before: {
@@ -58,7 +86,8 @@ export default function setupServer({
 
   server.service('articles').hooks({
     before: {
-      all: [ jwtAuth, articlePermissions.check ]
+      all: [ jwtAuth, articlePermissions.check ],
+      create: setAuthor
     },
     after: {
       all: [ articlePermissions.filter ]

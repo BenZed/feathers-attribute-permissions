@@ -24,10 +24,12 @@ chai.use(chaiAsPromised)
 describe('Document permission overrides', () => {
 
   beforeEach(() => {
-
+    
   })
 
-  afterEach(() => server.listener && server.listener.close())
+  afterEach(() => {
+
+  })
 
   describe('Overrides user permissions at the method level', () => {
 
