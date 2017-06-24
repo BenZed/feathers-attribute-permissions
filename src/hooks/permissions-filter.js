@@ -48,6 +48,8 @@ export default function(permissions) {
 
     const isGet = method === 'get'
 
+    const service = this
+
     //if this isn't a find or get method, or this is no provider, we can ignore it.
     if (method !== 'find' && !isGet || !provider)
       return
@@ -66,9 +68,15 @@ export default function(permissions) {
       //just makes it universally available
       hook.data = data
 
-      //just in case some other hook fills the original field, we set it to null so
-      //it wont fuck us up
-      hook[originalField] = null
+      //Need to get the original document in case it has override permissions
+      //wrapped in a try/catch in case the doc doesn't exist
+      try {
+        hook[originalField] = method !== 'create'
+          ? await service.get(data[service.id])
+          : null
+      } catch (err) {
+        hook[originalField] = null
+      }
 
       const error = await permissions.test(hook)
 

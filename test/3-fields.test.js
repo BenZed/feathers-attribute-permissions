@@ -246,7 +246,6 @@ describe('Field level usage in Services', function() {
       janeDoc = await clientUsers.get(jane.id)
       assert.equal('permissions' in janeDoc, true)
 
-
     })
 
   })

@@ -51,6 +51,8 @@ export default function(permissions) {
 
     const { provider } = params
 
+    const service = this
+
     //if this isn't a find or get method, or this is no provider, we can ignore it.
     if (method === 'find' || method === 'get' || !provider)
       return
@@ -60,11 +62,15 @@ export default function(permissions) {
     if (provider && !user)
       throw new Error('User not resolved, permissions could not be determined.')
 
-    //update and patch methods are going to need the original document we're editing
-    //for comparing
-    hook[originalField] = method === 'update' || method === 'patch'
-      ? await this.get(id)
-      : null
+    //need to get the original document to check it's permissions. Wrapped in a
+    //try/catch in case the id doesn't exist
+    try {
+      hook[originalField] = method !== 'create'
+        ? await service.get(id)
+        : null
+    } catch (err) {
+      hook[originalField] = null
+    }
 
     const error = await permissions.test(hook)
 

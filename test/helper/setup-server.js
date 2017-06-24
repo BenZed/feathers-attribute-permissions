@@ -66,8 +66,10 @@ export default function setupServer({
 
     .use(errorHandler())
 
-  const userPermissions = new Permissions(userConfig)
-  const articlePermissions = new Permissions(articleConfig)
+  const config = { userIdField: 'id' }
+
+  const userPermissions = new Permissions(userConfig, config)
+  const articlePermissions = new Permissions(articleConfig, config)
 
   server.start = (port = 3000) => server.listener = server.listen(port)
   server.stop = () => server.listener && server.listener.close()

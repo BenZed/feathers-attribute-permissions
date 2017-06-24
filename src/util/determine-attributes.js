@@ -4,22 +4,21 @@ const NIL = { }
 
 export default async function determineAttributes(hook) {
 
-  const { params, method } = hook
+  const { params } = hook
 
   const { permissionsField, userIdField, userEntityField, originalField } = this.options
 
   const original = hook[originalField] || NIL
 
   const user = params[userEntityField] || NIL
-  const permissions = user[permissionsField] || NIL
+  const attributes = user[permissionsField] || NIL
   const id = String(user[userIdField])
 
   const override =
-    is.plainObject(original[permissionsField]) &&
-    is.plainObject(original[permissionsField][method])
-     ? original[permissionsField][method][id] || NIL
+    is.plainObject(original[permissionsField])
+     ? original[permissionsField][id] || NIL
      : NIL
 
-  return { ...permissions, ...override }
+  return { ...attributes, ...override }
 
 }
