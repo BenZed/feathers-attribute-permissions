@@ -31,9 +31,9 @@ export default class Permissions {
     const { userEntityField, userIdField, permissionsField, originalField } = { ...DEFAULT_OPTIONS, ...options }
 
     define(this)
-    .const.enum('options', { userEntityField, userIdField, permissionsField, originalField })
-    .const.enum('check', permissionsCheck(this))
-    .const.enum('filter', permissionsFilter(this))
+      .const.enum('options', { userEntityField, userIdField, permissionsField, originalField })
+      .const.enum('check', permissionsCheck(this))
+      .const.enum('filter', permissionsFilter(this))
 
     this::parseConfig(config)
 

@@ -16,11 +16,11 @@ function noPermissionsRequired() {
 // Helper
 /******************************************************************************/
 
-function determineHandler(config, main, alt) {
+function createHandlerFromConfig(config, main, alt) {
 
-  const func = is(config, String)              ? ensureFuncs(`${config}-${alt || main}`)
-    : is(config, Object) && !is(config, Array) ? ensureFuncs(config[main] || config[alt])
-    : /*is anything else*/                       ensureFuncs(config)
+  const func = is(config, String) ? createHandler(`${config}-${alt || main}`)
+    : is.plainObject(config)      ? createHandler(config[main] || config[alt])
+    : /*is anything else*/          createHandler(config)
 
   if (is.plainObject(func) && main === 'remove')
     throw new Error('Invalid configuration: \'remove\' method doesn\'t access data, and cannot be configured with an object.')
@@ -29,30 +29,7 @@ function determineHandler(config, main, alt) {
 
 }
 
-function determineHandlers(config) {
-
-  return {
-    find:   determineHandler(config, 'find',   'view'),
-    get:    determineHandler(config, 'get',    'view'),
-    patch:  determineHandler(config, 'patch',  'edit'),
-    update: determineHandler(config, 'update', 'edit'),
-    create: determineHandler(config, 'create'),
-    remove: determineHandler(config, 'remove')
-  }
-
-}
-
-function ensureFuncsFromObject(input) {
-  const output = {}
-
-  for (const key in input)
-    output[key] = ensureFuncs(input[key])
-
-  return output
-}
-
-function ensureFuncs(config) {
-
+function createHandler(config) {
 
   const func = is(config, Function) ? config
 
@@ -61,9 +38,10 @@ function ensureFuncs(config) {
 
     //if configured with an object, it's assumed that there are sub fields that
     //need their own permissions checking
-    : is.plainObject(config) ? ensureFuncsFromObject(config)
+    : is.plainObject(config) ? createHandlerFromObject(config)
 
-    //if configured with false or null/undefined, permissions are not required for this method or field
+    //if configured with false or null/undefined, permissions are not required
+    //for this method or field
     : config === false || !is(config) ? noPermissionsRequired
 
     //anything else is invalid
@@ -76,6 +54,15 @@ function ensureFuncs(config) {
 
 }
 
+function createHandlerFromObject(input) {
+  const output = {}
+
+  for (const key in input)
+    output[key] = createHandler(input[key])
+
+  return output
+}
+
 /******************************************************************************/
 // Exports
 /******************************************************************************/
@@ -85,9 +72,16 @@ export default function parseConfig(config) {
   if (!is(config, Object, String, Function))
     throw new Error('Requires an object or string as configuration.')
 
-  const permissions = this
+  const handlers = {
+    find:   createHandlerFromConfig(config, 'find',   'view'),
+    get:    createHandlerFromConfig(config, 'get',    'view'),
+    patch:  createHandlerFromConfig(config, 'patch',  'edit'),
+    update: createHandlerFromConfig(config, 'update', 'edit'),
+    create: createHandlerFromConfig(config, 'create'),
+    remove: createHandlerFromConfig(config, 'remove')
+  }
 
-  const handlers = permissions::determineHandlers(config)
+  const permissions = this
 
   define(permissions)
     .const(HANDLERS, handlers)

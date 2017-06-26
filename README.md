@@ -10,7 +10,7 @@ ___
 
 ___
 
-# Example
+# Quick Example
 
 The following assumes you're familiar with [feathers.js](http://www.feathersjs.com) workflow. If you've never heard of [feathers.js](http://www.feathersjs.com) before, it's great. Learn it: [feathers.js](http://www.feathersjs.com)
 
@@ -119,7 +119,7 @@ users.hooks({
 ```js
 
 const articlePermissions = new Permissions({
-  view:  ['articles', 'articles-manage'],
+  view:   'articles-view',
   edit:   'articles-manage'
   create: 'articles-manage',
   remove: 'articles-manage'
@@ -181,27 +181,94 @@ userService.create({
   //users need to have a permissions object on them. Each field should
   //be a permissions flag set to true.
 
-  //undefined flags, or flags set to a falsy value will result in permissions
-  //being denied
+  //undefined flags, or flags set to a falsy value will result in
+  //permissions being denied
   permissions: {
     'users-create': true,
     'users-edit': true,
     'users-view': true,
     'users-remove': true,
     'articles-manage': true,
+    'articles-view': true
   }
 })
 
 userService.create({
+
   email: 'joe@yourapp.com',
   password: 'joe-user',
 
   permissions: {
-    'users-view': true,
-    'articles': true
+    'users-view': false,
+    'articles-view': true
   }
 
 })
 
+```
+
+## Test it Out on the Client
+
+```js
+
+async function test() {
+
+  await client.authenticate({ strategy: 'local', email: 'joe@yourapp.com', password: 'joe-user'})
+
+  const users = await client.service('users').find({})
+
+  console.log(users) // users will be [], because joe doesn't have permissions to see them
+
+  try {
+    const me = await client.service('users').get(1)
+  } catch (err) {
+    //Poor joe can't even get himself!
+    console.log(err.message) // You do not have Permission to view document with id 0
+  }
+
+  try {
+    await.service('articles').create({
+      body: 'I am mad that I don\'t have permissions to do anything!'
+    })
+  } catch (err) {
+    console.log(err.message) //You do not have Permission to create articles.
+  }
+
+}
+
+test()
 
 ```
+
+---
+
+# Configuration
+
+_todo: Detail Permission configuration here_
+
+## ```String``` or ```[String]``` configuration
+
+## ```Object``` configuration
+
+## ```Function``` configuration
+
+---
+
+# Overrides on Documents
+
+_todo: Detail how permission objects on non-user documents can override user permissions_
+
+---
+
+# Options
+
+_todo: describe userEntityField, userIdField, permissionsField, originalField_
+
+---
+
+# Utility Methods and Hooks
+
+_todo: talk about the various packaged utility methods and hooks that
+come bundled to help with more complex permissions_
+
+---
