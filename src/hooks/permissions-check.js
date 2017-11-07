@@ -1,11 +1,19 @@
-import { checkContext } from 'feathers-hooks-common/lib/services'
-import { Forbidden } from 'feathers-errors'
+import { checkContext } from 'feathers-hooks-common'
+import { Forbidden, GeneralError, BadRequest } from 'feathers-errors'
 import is from 'is-explicit'
 import Permissions from '../permissions'
 
 /******************************************************************************/
 // Helper
 /******************************************************************************/
+
+function isBulkQuery ({ method, id, data }) {
+
+  if (method === 'create')
+    return is(data, Array)
+
+  return !is(id)
+}
 
 function getNameOfService(service, app) {
 
@@ -39,7 +47,7 @@ function describeError(error, method, name, msg = `You cannot ${method} ${name}.
 export default function(permissions) {
 
   if (!is(permissions, Permissions))
-    throw new Error('permissions-fitler hook must be configured with a Permissions object.')
+    throw new Error('permissions-filter hook must be configured with a Permissions object.')
 
   const { userEntityField, originalField } = permissions.options
 
@@ -57,10 +65,13 @@ export default function(permissions) {
     if (method === 'find' || method === 'get' || !provider)
       return
 
+    if (isBulkQuery(hook))
+      throw new BadRequest('Permissions checking on bulk queries is not yet supported.')
+
     const user = params[userEntityField]
 
     if (provider && !user)
-      throw new Error('User not resolved, permissions could not be determined.')
+      throw new BadRequest('User not resolved, permissions could not be determined.')
 
     //need to get the original document to check it's permissions. Wrapped in a
     //try/catch in case the id doesn't exist

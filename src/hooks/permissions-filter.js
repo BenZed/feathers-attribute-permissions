@@ -1,4 +1,4 @@
-import { checkContext } from 'feathers-hooks-common/lib/services'
+import { checkContext } from 'feathers-hooks-common'
 import { Forbidden } from 'feathers-errors'
 import is from 'is-explicit'
 
@@ -34,7 +34,7 @@ function filterDataWithError(data, error) {
 export default function(permissions) {
 
   if (!is(permissions, Permissions))
-    throw new Error('permissions-fitler hook must be configured with a Permissions object.')
+    throw new Error('permissions-filter hook must be configured with a Permissions object.')
 
   const { userEntityField, originalField } = permissions.options
 
@@ -42,59 +42,68 @@ export default function(permissions) {
 
     checkContext(hook, 'after', null, 'permissions-filter')
 
-    const { method, params, result } = hook
+    const { method, params = {}, result, service } = hook
 
     const { provider } = params
-
-    const isGet = method === 'get'
-
-    const service = this
-
-    //if this isn't a find or get method, or this is no provider, we can ignore it.
-    if (method !== 'find' && !isGet || !provider)
+    //if there is no provider, we don't need to filter anything
+    if (!provider)
       return
 
     const user = params[userEntityField]
-
     if (provider && !user)
       throw new Error('User not resolved, permissions could not be determined.')
 
-    const oldResult = isGet ? [result] : result
-    const newResult = []
+    const isPaginated = is.plainObject(result) &&
+      'data' in result &&
+      // Handles situations where non-paginated result is a single doc with a 'data' field
+      service.id in result === false
 
-    for (const data of oldResult) {
+    const data = isPaginated ? result.data : result
 
-      //permissions looks for data in hook.data rather than hook.result. this
-      //just makes it universally available
-      hook.data = data
+    const isArray = is(data, Array)
+    const every = isArray ? data : [ data ]
+    let permitted = []
+
+    for (const doc of every) {
+
+      //permissions looks for data in hook.data rather than hook.result.
+      hook.data = doc
 
       //Need to get the original document in case it has override permissions
       //wrapped in a try/catch in case the doc doesn't exist
       try {
         hook[originalField] = method !== 'create'
-          ? await service.get(data[service.id])
+          ? await service.get(doc[service.id])
           : null
+
       } catch (err) {
         hook[originalField] = null
       }
 
       const error = await permissions.test(hook)
 
-      const filtered = filterDataWithError(data, error)
+      const filtered = filterDataWithError(doc, error)
 
-      //a get request wont result in an error if the filtered data returns an object
-      //but, if the filtered data is null, it means this document is entirely unaccessible
-      //and the get request should result in an error
-      if (isGet && !filtered && error)
-        throw new Forbidden(is(error, String) ? error : `You cannot view document with id ${data[this.id]}`)
+      // get methods trying to return a non-existant doc result in an error. To
+      // remain consistent, get methods trying to return a forbidden doc should
+      // do the same.
+      if (method === 'get' && !filtered && error)
+        throw new Forbidden(is(error, String) ? error : `You cannot view document with id ${doc[service.id]}`)
 
       else if (filtered)
-        newResult.push(filtered)
+        permitted.push(filtered)
 
       delete hook.data
     }
 
-    hook.result = isGet ? newResult[0] : newResult
+    if (!isArray)
+      permitted = permitted[0]
+
+    if (isPaginated) {
+      result.data = permitted
+      hook.result = result
+    } else
+      hook.result = permitted
 
     return hook
 

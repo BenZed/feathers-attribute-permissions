@@ -2,15 +2,14 @@ import feathers from 'feathers'
 import rest from 'feathers-rest'
 import hooks from 'feathers-hooks'
 import socketio from 'feathers-socketio'
+import PORT from './port'
 
 import auth from 'feathers-authentication'
 import jwt from 'feathers-authentication-jwt'
 import local from 'feathers-authentication-local'
 
 import memory from 'feathers-memory'
-
 import errorHandler from 'feathers-errors/handler'
-
 import bodyParser from 'body-parser'
 
 import Permissions from '../../src'
@@ -45,7 +44,9 @@ const setAuthor = hook => {
 
 export default function setupServer({
   userConfig = 'users',
-  articleConfig = 'articles'
+  articleConfig = 'articles',
+  userServiceConfig = {},
+  articleServiceConfig = {}
 } = {}) {
 
   const provider = USE_SOCKET_IO_INSTEAD_OF_REST ? socketio() : rest()
@@ -61,8 +62,8 @@ export default function setupServer({
     .configure(local())
     .configure(jwt())
 
-    .use('/users', memory())
-    .use('/articles', memory())
+    .use('/users', memory(userServiceConfig))
+    .use('/articles', memory(articleServiceConfig))
 
     .use(errorHandler())
 
@@ -71,7 +72,7 @@ export default function setupServer({
   const userPermissions = new Permissions(userConfig, config)
   const articlePermissions = new Permissions(articleConfig, config)
 
-  server.start = (port = 3000) => server.listener = server.listen(port)
+  server.start = () => server.listener = server.listen(PORT)
   server.stop = () => server.listener && server.listener.close()
 
   server.service('users').hooks({

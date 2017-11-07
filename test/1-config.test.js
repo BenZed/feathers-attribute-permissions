@@ -226,7 +226,7 @@ describe('Permission hooks', () => {
 
   describe('check hook', () => {
     it('must be configured with a permissions object', () => {
-      expect(() => permissionsCheck(null)).to.throw('permissions-fitler hook must be configured with a Permissions object.')
+      expect(() => permissionsCheck(null)).to.throw('permissions-filter hook must be configured with a Permissions object.')
     })
     it('must be used as an before hook', () => {
 
@@ -240,7 +240,7 @@ describe('Permission hooks', () => {
 
   describe('filter hook', () => {
     it('must be configured with a permissions object', () => {
-      expect(() => permissionsFilter(null)).to.throw('permissions-fitler hook must be configured with a Permissions object.')
+      expect(() => permissionsFilter(null)).to.throw('permissions-filter hook must be configured with a Permissions object.')
     })
     it('must be used as an after hook', () => {
 

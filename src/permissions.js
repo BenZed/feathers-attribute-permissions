@@ -15,7 +15,7 @@ const DEFAULT_OPTIONS = {
   permissionsField: 'permissions',
 }
 
-const VALID_METHODS = [ 'find', 'get', 'create', 'remove', 'patch', 'update']
+const VALID_METHODS = [ 'find', 'get', 'create', 'remove', 'patch', 'update' ]
 
 /******************************************************************************/
 // Main

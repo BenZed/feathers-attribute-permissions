@@ -31,9 +31,7 @@ describe('Field level usage in Services', function() {
   const jane = {
     email: 'jane@app.com',
     password: 'jane',
-    permissions: {
-
-    }
+    permissions: { }
   }
 
   beforeEach(async () => {
@@ -41,7 +39,7 @@ describe('Field level usage in Services', function() {
     const isSelfOrHasFlag = flag =>
       (attributes, hook) => {
 
-        return hook.original && hook.params.user.id === hook.original.id
+        return hook.original && hook.params && hook.params.user.id === hook.original.id
           ? false
           : !attributesHasFlag(attributes, flag)
       }
@@ -126,7 +124,7 @@ describe('Field level usage in Services', function() {
       const error = await expect(create)
         .to.eventually.be.rejected
 
-      assert.deepEqual(error.errors, { author: 'You cannot create articles for other users.'})
+      assert.deepEqual(error.errors, { author: 'You cannot create articles for other users.' })
 
     })
 
@@ -134,9 +132,10 @@ describe('Field level usage in Services', function() {
 
       await client.logout()
       await client.authenticate({ strategy: 'local', ...jane })
+
       const clientArticles = client.service('articles')
 
-      const [ janesArticle ] = await clientArticles.find({ query: { author: jane.id }})
+      const [ janesArticle ] = await clientArticles.find({ query: { author: jane.id } })
 
       const update = clientArticles
         .update(janesArticle.id, {
@@ -160,7 +159,7 @@ describe('Field level usage in Services', function() {
       const clientArticles = client.service('articles')
       const clientUsers = client.service('users')
 
-      const [ janesArticle ] = await clientArticles.find({ query: { author: jane.id }})
+      const [ janesArticle ] = await clientArticles.find({ query: { author: jane.id } })
 
       let patch = clientArticles
         .patch(janesArticle.id, {
@@ -192,7 +191,7 @@ describe('Field level usage in Services', function() {
         email: 'You cannot patch field \'email\'.'
       })
 
-      const [ adminArticle ] = await clientArticles.find({ query: { author: admin.id }})
+      const [ adminArticle ] = await clientArticles.find({ query: { author: admin.id } })
 
       patch = clientArticles
         .patch(adminArticle.id, {

@@ -43,8 +43,8 @@ describe('Method level usage in Services', function() {
     password: 'joe'
   }
 
-  beforeEach(async () => {
-    server = setupServer()
+  const setup = async config => {
+    server = setupServer(config)
 
     const users = server.service('users')
 
@@ -55,95 +55,130 @@ describe('Method level usage in Services', function() {
     server.start()
 
     client = setupClient()
+  }
+
+  describe('Requires', () => {
+
+    beforeEach(async () => setup())
+
+    afterEach(() => server.stop())
+
+    it('Authentication', async () => {
+
+      const foobarPermissions = new Permissions('foobar')
+      server.use('foobar', memory())
+        .service('foobar')
+        .hooks({
+          after: { all: foobarPermissions.filter }
+        })
+
+      server.use(errorHandler())
+
+      return expect(client.service('foobar').find({}))
+        .to.eventually.be
+        .rejectedWith('User not resolved, permissions could not be determined.')
+
+    })
 
   })
 
-  afterEach(() => server.stop())
-
-  it('Requires authentication', async () => {
-
-    const foobarPermissions = new Permissions('foobar')
-    server.use('foobar', memory())
-      .service('foobar')
-      .hooks({
-        after: { all: foobarPermissions.filter }
-      })
-
-    server.use(errorHandler())
-
-    return expect(client.service('foobar').find({}))
-      .to.eventually.be
-      .rejectedWith('User not resolved, permissions could not be determined.')
-
-  })
-
-  describe('User edit/remove calls must pass permission tests', async () => {
-
-    const testCheck = (method, ...args) => async () => {
-
-      await server.service('articles').create({ body: 'Article Created Serverside' })
-
-      await client.logout()
-      await client.authenticate({ strategy: 'local', ...joe })
-
-      await expect(client.service('articles')[method](...args))
-        .to.eventually.be.rejectedWith(`You cannot ${method} articles.`)
-
-      await client.logout()
-      await client.authenticate({ strategy: 'local', ...admin })
-
-      await expect(client.service('articles')[method](...args))
-        .to.eventually.be.fulfilled
+  const chapters = [{
+    name: 'Non Paginated Services',
+    config: {}
+  }, {
+    name: 'Paginated Services',
+    config: {
+      userServiceConfig: { paginate: { default: 5, max: 10 } },
+      articleServiceConfig: { paginate: { default: 5, max: 10 } },
     }
+  }]
 
-    it('create', testCheck('create', { body: 'New Article.'}))
+  for (const chapter of chapters) describe(chapter.name, () => {
 
-    it('patch', testCheck('patch', 0, { body: 'Patched Article.'}))
+    beforeEach(() => setup(chapter.config))
 
-    it('update', testCheck('update', 0, { body: 'Updated Article.'}))
+    afterEach(() => server.stop())
 
-    it('remove', testCheck('remove', 0 ))
+    describe('User edit/remove calls must pass permission tests', async () => {
 
-  })
+      const testCheck = (method, ...args) => async () => {
 
-  describe('User view calls must be filtered by permissions tests', async () => {
+        await server
+          .service('articles')
+          .create({ body: 'Article Created Serverside' })
 
-    const testFilter = (method, query) => async () => {
+        await client.logout()
+        await client.authenticate({ strategy: 'local', ...joe })
 
-      const articles = server.service('articles')
+        await expect(client.service('articles')[method](...args))
+          .to.eventually.be.rejectedWith(`You cannot ${method} articles.`)
 
-      await articles.create({ body: 'Article 1'})
-      await articles.create({ body: 'Article 2'})
-      await articles.create({ body: 'Article 3'})
-      await articles.create({ body: 'Article 4'})
+        await client.logout()
+        await client.authenticate({ strategy: 'local', ...admin })
 
-      const allArticleDocs = await articles.find({})
+        await expect(client.service('articles')[method](...args))
+          .to.eventually.be.fulfilled
+      }
 
-      await client.logout()
-      await client.authenticate({ strategy: 'local', ...joe })
-      const joeRequest = client.service('articles')[method](query)
+      it('create', testCheck('create', { body: 'New Article.' }))
 
-      await (method === 'find'
-        ? expect(joeRequest).to.eventually.deep.equal([])
-        : expect(joeRequest).to.eventually.be.rejectedWith(`You cannot view document with id ${query}`)
-      )
+      it('patch', testCheck('patch', 0, { body: 'Patched Article.' }))
 
-      await client.logout()
-      await client.authenticate({ strategy: 'local', ...admin })
+      it('update', testCheck('update', 0, { body: 'Updated Article.' }))
 
-      const adminRequest = client.service('articles')[method](query)
+      it('remove', testCheck('remove', 0 ))
 
-      await (
-        method === 'find'
-          ? expect(adminRequest).to.eventually.deep.equal(allArticleDocs)
-          : expect(adminRequest).to.eventually.deep.equal(allArticleDocs[query])
-      )
+    })
 
-    }
+    describe('Results must be filtered by permissions tests', async () => {
 
-    it('find', testFilter('find', {}))
-    it('get', testFilter('get', 0))
+      const testFilter = (method, arg) => async () => {
 
+        const articles = server.service('articles')
+
+        await articles.create({ body: 'Article 1' })
+        await articles.create({ body: 'Article 2' })
+        await articles.create({ body: 'Article 3' })
+        await articles.create({ body: 'Article 4' })
+
+        const adminExpectedResult = await articles[method](arg)
+
+        await client.logout()
+        await client.authenticate({ strategy: 'local', ...joe })
+
+        let joeResult
+
+        try {
+          joeResult = await client.service('articles')[method](arg)
+          if ('data' in joeResult)
+            joeResult = joeResult.data
+        } catch (err) {
+          joeResult = err
+        }
+
+        await (method !== 'get'
+          ? expect(joeResult).to.deep.equal([])
+          : expect(joeResult).to.have.property('message', `You cannot view document with id ${arg}`)
+        )
+
+        await client.logout()
+        await client.authenticate({ strategy: 'local', ...admin })
+
+        const adminResult = await client.service('articles')[method](arg)
+
+        return expect(adminResult)
+          .to.deep
+          .equal(adminExpectedResult)
+
+      }
+
+      it('find', testFilter('find', {}))
+      it('get', testFilter('get', 0))
+      // it('patch', testFilter('patch', 0))
+      // it('update', testFilter('update', 0))
+      // it('remove', testFilter('remove', 0))
+
+    })
   })
 
 })
